@@ -18,6 +18,7 @@ import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.TypeUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -71,9 +72,9 @@ public class ControllerMetricRecipe extends Recipe {
                                                   GetMapping.class,
                                                   PatchMapping.class,
                                                   DeleteMapping.class)
-                                              .anyMatch(mapping -> mapping.getSimpleName().equals(((J.Identifier) a.getAnnotationType()).getSimpleName())))
+                                              .anyMatch(mapping -> TypeUtils.isOfClassType(a.getType(), mapping.getName())))
                                         || allAnnotations.stream()
-                           .anyMatch(current -> Timed.class.getSimpleName().equals(((J.Identifier) current.getAnnotationType()).getSimpleName()))) {
+                           .anyMatch(a -> TypeUtils.isOfClassType(a.getType(), Timed.class.getName()))) {
         // missing a *Mapping or already has Timed annotation: skipping
         return method;
       }
