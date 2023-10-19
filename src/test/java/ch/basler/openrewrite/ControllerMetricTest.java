@@ -10,7 +10,7 @@ class ControllerMetricTest implements RewriteTest {
 
   @Override
   public void defaults(RecipeSpec spec) {
-    spec.recipe(new ControllerMetricRecipe("com.myorg.FooBar"));
+    spec.recipe(new ControllerMetricRecipe());
   }
 
   @Test

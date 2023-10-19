@@ -6,74 +6,74 @@ import lombok.Value;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
+import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
-import org.openrewrite.Option;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
-import org.openrewrite.internal.lang.NonNull;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.J;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
 public class ControllerMetricRecipe extends Recipe {
 
-  @Option(displayName = "Fully Qualified Class Name")
-  @NonNull
-  String fullyQualifiedClassName;
-
   // All recipes must be serializable. This is verified by RewriteTest.rewriteRun() in your tests.
   @JsonCreator
-  public ControllerMetricRecipe(@NonNull @JsonProperty("fullyQualifiedClassName") String fullyQualifiedClassName) {
-    this.fullyQualifiedClassName = fullyQualifiedClassName;
+  public ControllerMetricRecipe() {
   }
 
   @Override
-  public String getDisplayName() {
+  public @NotNull String getDisplayName() {
     return "Add Prometheus Timer to operations";
   }
 
   @Override
-  public String getDescription() {
-    return "Adding @Timer annotation to each rest operation if not available.";
+  public @NotNull String getDescription() {
+    return "Adding @Timed annotation to each rest operation if not available.";
   }
 
   @Override
-  public TreeVisitor<?, ExecutionContext> getVisitor() {
+  public @NotNull TreeVisitor<?, ExecutionContext> getVisitor() {
     return new ControllerMetricVisitor();
   }
 
-  public class ControllerMetricVisitor extends JavaIsoVisitor<ExecutionContext> {
-
+  public static class ControllerMetricVisitor extends JavaIsoVisitor<ExecutionContext> {
     @Override
-    public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
+    public J.@NotNull MethodDeclaration visitMethodDeclaration(J.@NotNull MethodDeclaration method,
+                                                               @NotNull ExecutionContext executionContext) {
       super.visitMethodDeclaration(method, executionContext);
 
       final List<J.Annotation> allAnnotations = method.getAllAnnotations();
-      for (J.Annotation annotation : allAnnotations) {
+      if (allAnnotations.stream()
+                        .noneMatch(a -> Stream.of(PostMapping.class,
+                                                  PutMapping.class,
+                                                  GetMapping.class,
+                                                  PatchMapping.class,
+                                                  DeleteMapping.class)
+                                              .anyMatch(mapping -> mapping.getSimpleName().equals(((J.Identifier) a.getAnnotationType()).getSimpleName())))
+                                        || allAnnotations.stream()
+                           .anyMatch(current -> Timed.class.getSimpleName().equals(((J.Identifier) current.getAnnotationType()).getSimpleName()))) {
+        // missing a *Mapping or already has Timed annotation: skipping
+        return method;
+      }
 
-        //TypeUtils.isOfClassType(annotation.getType(), PostMapping.class.getName());
-        if (PostMapping.class.getSimpleName().equals(((J.Identifier) annotation.getAnnotationType()).getSimpleName())) {
-          if (allAnnotations.stream().noneMatch(current -> Timed.class.getSimpleName().equals(((J.Identifier) current.getAnnotationType()).getSimpleName()))) {
-            method = JavaTemplate
+      method = JavaTemplate
               .builder("@Timed")
-              .imports("io.micrometer.core.annotation.Timed")
+              .imports(Timed.class.getName())
               .build()
               .apply(getCursor(), method.getCoordinates().addAnnotation(Comparator.comparing(J.Annotation::getSimpleName)));
 
-            //maybeAddImport(Timed.class.getName());
-            maybeAddImport("io.micrometer.core.annotation.Timed");
-
-          }
-        }
-      }
-
+      maybeAddImport(Timed.class.getName());
       return method;
     }
   }
