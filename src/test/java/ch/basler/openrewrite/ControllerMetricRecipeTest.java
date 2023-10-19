@@ -7,18 +7,16 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
 
-class ControllerMetricTest implements RewriteTest {
-
+class ControllerMetricRecipeTest implements RewriteTest {
   @Override
   public void defaults(RecipeSpec spec) {
     spec.recipe(new ControllerMetricRecipe())
         .parser(JavaParser.fromJavaVersion()
                           .classpath("spring-web", "micrometer-core"));
-    ;
   }
 
   @Test
-  void addsAnnotationToMappingOperation() {
+  void addsAnnotationToPostMappingOperation() {
     rewriteRun(
       java(
               """
@@ -47,6 +45,39 @@ class ControllerMetricTest implements RewriteTest {
                   }
               }
                       """)
+    );
+  }
+
+  @Test
+  void addsAnnotationToDeleteMappingOperation() {
+    rewriteRun(
+            java(
+                    """
+                    package com.yourorg;
+      
+                    import org.springframework.web.bind.annotation.DeleteMapping;
+                    
+                    class FooBar {
+                    
+                        @DeleteMapping
+                        public void myOperation() {
+                        }
+                    }
+                """,
+                    """
+                    package com.yourorg;
+      
+                    import io.micrometer.core.annotation.Timed;
+                    import org.springframework.web.bind.annotation.DeleteMapping;
+                    
+                    class FooBar {
+                    
+                        @DeleteMapping
+                        @Timed
+                        public void myOperation() {
+                        }
+                    }
+                            """)
     );
   }
 
