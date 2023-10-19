@@ -4,15 +4,18 @@ import io.micrometer.core.annotation.Timed;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 import org.jetbrains.annotations.NotNull;
+import org.openrewrite.Contributor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.java.JavaIsoVisitor;
+import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.J;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,6 +46,14 @@ public class ControllerMetricRecipe extends Recipe {
   }
 
   @Override
+  public @NotNull List<Contributor> getContributors() {
+    return Arrays.asList(
+            new Contributor("Arno Burkhart", "", 0),
+            new Contributor("Daniel Prill", "", 0),
+            new Contributor("Markus Lindenmann", "", 0));
+  }
+
+  @Override
   public @NotNull TreeVisitor<?, ExecutionContext> getVisitor() {
     return new ControllerMetricVisitor();
   }
@@ -67,11 +78,13 @@ public class ControllerMetricRecipe extends Recipe {
         return method;
       }
 
-      method = JavaTemplate
-              .builder("@Timed")
-              .imports(Timed.class.getName())
-              .build()
-              .apply(getCursor(), method.getCoordinates().addAnnotation(Comparator.comparing(J.Annotation::getSimpleName)));
+      method = JavaTemplate.builder("@" + Timed.class.getSimpleName())
+                           .imports(Timed.class.getName())
+                           .javaParser(JavaParser.fromJavaVersion()
+                                                 .dependsOn("package io.micrometer.core.annotation; public @interface Timed{}")
+                           )
+                           .build()
+                           .apply(getCursor(), method.getCoordinates().addAnnotation(Comparator.comparing(J.Annotation::getSimpleName)));
 
       maybeAddImport(Timed.class.getName());
       return method;
