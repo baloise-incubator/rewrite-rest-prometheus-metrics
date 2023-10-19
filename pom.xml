@@ -100,6 +100,11 @@
       <artifactId>rewrite-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+      <version>6.0.11</version>
+    </dependency>
   </dependencies>
 
   <build>
